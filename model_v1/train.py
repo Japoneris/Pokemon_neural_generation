@@ -18,7 +18,15 @@ def main():
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"],
                         help="Device to use: auto (default), cpu, or cuda")
+    parser.add_argument("--epochs", type=int, default=None,
+                        help="Total number of epochs (overrides config.NUM_EPOCHS)")
+    parser.add_argument("--lr", type=float, default=None,
+                        help="Learning rate for both G and D (overrides config values)")
     args = parser.parse_args()
+
+    num_epochs = args.epochs if args.epochs is not None else config.NUM_EPOCHS
+    lr_g = args.lr if args.lr is not None else config.LEARNING_RATE_G
+    lr_d = args.lr if args.lr is not None else config.LEARNING_RATE_D
 
     # Setup
     os.makedirs(config.CHECKPOINT_DIR, exist_ok=True)
@@ -49,10 +57,10 @@ def main():
 
     # Optimizers
     optimizer_G = torch.optim.Adam(
-        generator.parameters(), lr=config.LEARNING_RATE_G, betas=(config.BETA1, config.BETA2)
+        generator.parameters(), lr=lr_g, betas=(config.BETA1, config.BETA2)
     )
     optimizer_D = torch.optim.Adam(
-        discriminator.parameters(), lr=config.LEARNING_RATE_D, betas=(config.BETA1, config.BETA2)
+        discriminator.parameters(), lr=lr_d, betas=(config.BETA1, config.BETA2)
     )
 
     # Fixed noise for tracking progress
@@ -70,7 +78,15 @@ def main():
         optimizer_G.load_state_dict(checkpoint["optimizer_G_state_dict"])
         optimizer_D.load_state_dict(checkpoint["optimizer_D_state_dict"])
         start_epoch = checkpoint["epoch"] + 1
-        print(f"Resumed from epoch {checkpoint['epoch']}")
+        # Override learning rate if --lr was provided
+        if args.lr is not None:
+            for param_group in optimizer_G.param_groups:
+                param_group["lr"] = lr_g
+            for param_group in optimizer_D.param_groups:
+                param_group["lr"] = lr_d
+            print(f"Resumed from epoch {checkpoint['epoch']} with new lr={args.lr}")
+        else:
+            print(f"Resumed from epoch {checkpoint['epoch']}")
 
     # Write CSV header if starting fresh (or file doesn't exist)
     if start_epoch == 0 or not os.path.exists(loss_log_path):
@@ -78,12 +94,12 @@ def main():
             csv.writer(f).writerow(["epoch", "d_loss", "g_loss"])
 
     # Training loop
-    for epoch in range(start_epoch, config.NUM_EPOCHS):
+    for epoch in range(start_epoch, num_epochs):
         g_loss_sum = 0.0
         d_loss_sum = 0.0
         g_steps = 0
 
-        pbar = tqdm(dataloader, desc=f"Epoch {epoch}/{config.NUM_EPOCHS}", leave=False)
+        pbar = tqdm(dataloader, desc=f"Epoch {epoch}/{num_epochs}", leave=False)
         for batch_idx, real_images in enumerate(pbar):
             real_images = real_images.to(device)
             batch_size = real_images.size(0)
