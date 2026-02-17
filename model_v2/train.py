@@ -1,4 +1,4 @@
-"""WGAN-GP training loop for Pokemon generation."""
+"""WGAN-GP training loop for Pokemon generation (v2 with EMA)."""
 
 import argparse
 import csv
@@ -10,18 +10,23 @@ from tqdm import tqdm
 import config
 from dataset import get_dataloader
 from models import Generator, Discriminator
-from utils import compute_gradient_penalty, weights_init, save_image_grid
+from utils import compute_gradient_penalty, weights_init, save_image_grid, create_ema, update_ema
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--resume", type=str, default=None, help="Path to checkpoint to resume from")
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"],
+                        help="Device to use: auto (default), cpu, or cuda")
     args = parser.parse_args()
 
     # Setup
     os.makedirs(config.CHECKPOINT_DIR, exist_ok=True)
     os.makedirs(config.SAMPLE_DIR, exist_ok=True)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args.device == "auto":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device(args.device)
     print(f"Using device: {device}")
 
     torch.manual_seed(42)
@@ -38,11 +43,14 @@ def main():
     generator.apply(weights_init)
     discriminator.apply(weights_init)
 
+    # EMA generator
+    ema_generator = create_ema(generator)
+
     g_params = sum(p.numel() for p in generator.parameters())
     d_params = sum(p.numel() for p in discriminator.parameters())
     print(f"Generator: {g_params:,} params | Discriminator: {d_params:,} params")
 
-    # Optimizers
+    # Optimizers (TTUR: different LR for G and D)
     optimizer_G = torch.optim.Adam(
         generator.parameters(), lr=config.LEARNING_RATE_G, betas=(config.BETA1, config.BETA2)
     )
@@ -64,6 +72,7 @@ def main():
         discriminator.load_state_dict(checkpoint["discriminator_state_dict"])
         optimizer_G.load_state_dict(checkpoint["optimizer_G_state_dict"])
         optimizer_D.load_state_dict(checkpoint["optimizer_D_state_dict"])
+        ema_generator.load_state_dict(checkpoint["ema_generator_state_dict"])
         start_epoch = checkpoint["epoch"] + 1
         print(f"Resumed from epoch {checkpoint['epoch']}")
 
@@ -109,6 +118,9 @@ def main():
                 g_loss_sum += g_loss.item()
                 g_steps += 1
 
+                # Update EMA
+                update_ema(ema_generator, generator, config.EMA_DECAY)
+
             pbar.set_postfix(d_loss=f"{d_loss.item():.4f}", d_real=f"{d_real.item():.4f}")
 
         # Epoch logging
@@ -120,13 +132,13 @@ def main():
         with open(loss_log_path, "a", newline="") as f:
             csv.writer(f).writerow([epoch, f"{avg_d:.6f}", f"{avg_g:.6f}"])
 
-        # Save sample grid
+        # Save sample grid (using EMA generator)
         if epoch % config.SAMPLE_INTERVAL == 0:
-            generator.eval()
+            ema_generator.eval()
             with torch.no_grad():
-                fake = generator(fixed_noise)
+                fake = ema_generator(fixed_noise)
             save_image_grid(fake, os.path.join(config.SAMPLE_DIR, f"epoch_{epoch:04d}.png"))
-            generator.train()
+            ema_generator.train()
 
         # Save checkpoint
         if epoch % config.SAVE_INTERVAL == 0:
@@ -137,6 +149,7 @@ def main():
                     "discriminator_state_dict": discriminator.state_dict(),
                     "optimizer_G_state_dict": optimizer_G.state_dict(),
                     "optimizer_D_state_dict": optimizer_D.state_dict(),
+                    "ema_generator_state_dict": ema_generator.state_dict(),
                 },
                 os.path.join(config.CHECKPOINT_DIR, f"checkpoint_epoch_{epoch:04d}.pt"),
             )

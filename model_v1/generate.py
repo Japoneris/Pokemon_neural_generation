@@ -15,9 +15,14 @@ def main():
     parser.add_argument("--num", type=int, default=16, help="Number of images to generate")
     parser.add_argument("--output", type=str, default="generated.png", help="Output image path")
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
+    parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"],
+                        help="Device to use: auto (default), cpu, or cuda")
     args = parser.parse_args()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args.device == "auto":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device(args.device)
 
     if args.seed is not None:
         torch.manual_seed(args.seed)
