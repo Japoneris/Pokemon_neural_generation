@@ -7,8 +7,7 @@ This project uses GANs (WGAN-GP) and diffusion models (DDPM) to generate new pok
 
 # Results
 
-(trained on a 4GB laptop GPU)
-
+GPU: Quadro T2000 with Max-Q Design  (4GB)
 
 ## WGAN (small)
 
