@@ -1,4 +1,4 @@
 __pycache__/
-data/
+dataset/
 outputs/
-outputs_v2/
+venv/

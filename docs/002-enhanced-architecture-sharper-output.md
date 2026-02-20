@@ -46,23 +46,33 @@ Generated Pokemon images from v1 were too blurry at 64x64, lacking fine detail a
 ## File Structure
 
 ```
-model_v1/    # Original v1 code (preserved, paths point to ../data/ and ../outputs/)
-model_v2/    # Enhanced v2 code (paths point to ../data/ and ../outputs_v2/)
-  config.py
-  models.py
-  dataset.py
-  train.py
-  generate.py
-  utils.py
-  plot_losses.py
+models/
+  WGAN_small/    # Original v1 code (paths point to ../../dataset/ and ../../outputs/WGAN_small/)
+  WGAN_large/    # Enhanced v2 code (paths point to ../../dataset/ and ../../outputs/WGAN_large/)
+    config.py
+    models.py
+    dataset.py
+    train.py
+    generate.py
+    utils.py
+    plot_losses.py
+outputs/
+  WGAN_small/
+    checkpoints/
+    samples/
+    losses.csv
+  WGAN_large/
+    checkpoints/
+    samples/
+    losses.csv
 ```
 
 ## Usage
 
 ```bash
-cd model_v2
-source ../venv/bin/activate
+cd models/WGAN_large
+source ../../venv/bin/activate
 python3 train.py                    # Start training
-python3 train.py --resume ../outputs_v2/checkpoints/checkpoint_epoch_0500.pt  # Resume
-python3 generate.py --checkpoint ../outputs_v2/checkpoints/checkpoint_epoch_1000.pt --num 64
+python3 train.py --resume ../../outputs/WGAN_large/checkpoints/checkpoint_epoch_0500.pt  # Resume
+python3 generate.py --checkpoint ../../outputs/WGAN_large/checkpoints/checkpoint_epoch_1000.pt --num 64
 ```
