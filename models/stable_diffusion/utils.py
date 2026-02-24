@@ -107,25 +107,49 @@ class GaussianDiffusion:
         return mean
 
     @torch.no_grad()
-    def ddpm_sample(self, model, shape, device):
-        """Full DDPM sampling: T steps from pure noise to image."""
-        x = torch.randn(shape, device=device)
-        for i in reversed(range(self.num_timesteps)):
+    def ddpm_sample(self, model, shape, device, seed=None, callback=None):
+        """Full DDPM sampling: T steps from pure noise to image.
+
+        Args:
+            seed: Optional random seed for reproducible noise generation.
+            callback: Optional callable(step_idx, total_steps, x) called after each step.
+        """
+        if seed is not None:
+            generator = torch.Generator(device=device).manual_seed(seed)
+            x = torch.randn(shape, device=device, generator=generator)
+        else:
+            x = torch.randn(shape, device=device)
+
+        total = self.num_timesteps
+        for step_idx, i in enumerate(reversed(range(total))):
             t = torch.full((shape[0],), i, device=device, dtype=torch.long)
             x = self.p_sample(model, x, t)
+            if callback is not None:
+                callback(step_idx, total, x)
         return x
 
     # -- Reverse process (DDIM) --------------------------------------------
 
     @torch.no_grad()
-    def ddim_sample(self, model, shape, device, ddim_steps=50, eta=0.0):
-        """DDIM sampling: accelerated generation in fewer steps."""
+    def ddim_sample(self, model, shape, device, ddim_steps=50, eta=0.0, seed=None, callback=None):
+        """DDIM sampling: accelerated generation in fewer steps.
+
+        Args:
+            seed: Optional random seed for reproducible noise generation.
+            callback: Optional callable(step_idx, total_steps, x) called after each step.
+        """
         step_size = self.num_timesteps // ddim_steps
         timesteps = list(range(0, self.num_timesteps, step_size))
         alphas_cumprod = self.alphas_cumprod.to(device)
 
-        x = torch.randn(shape, device=device)
-        for i in reversed(range(len(timesteps))):
+        if seed is not None:
+            generator = torch.Generator(device=device).manual_seed(seed)
+            x = torch.randn(shape, device=device, generator=generator)
+        else:
+            x = torch.randn(shape, device=device)
+
+        total = len(timesteps)
+        for step_idx, i in enumerate(reversed(range(total))):
             t = torch.full((shape[0],), timesteps[i], device=device, dtype=torch.long)
             alpha_t = self._extract(alphas_cumprod, t, x.shape)
 
@@ -147,6 +171,9 @@ class GaussianDiffusion:
             dir_xt = torch.sqrt(1 - alpha_t_prev - sigma ** 2) * predicted_noise
             noise = torch.randn_like(x) if i > 0 else 0
             x = torch.sqrt(alpha_t_prev) * x_0_pred + dir_xt + sigma * noise
+
+            if callback is not None:
+                callback(step_idx, total, x)
 
         return x
 

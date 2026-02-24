@@ -11,32 +11,39 @@ GPU: Quadro T2000 with Max-Q Design  (4GB)
 
 ## WGAN (small)
 
-After 5000 epochs:
+After 3000 epochs:
 
-![](static/WGAN_small_epoch_5000.png)
+![](static/WGAN_small_3000_wgan_num32.png)
+- 2000 normal training step (10-4)
+- 1000 training step (5 10-5)
 
 
 Progress over epochs:
 
-![](static/WGAN_small_k5_s100.gif)
+![](static/WGAN_small_k10.gif)
 
 
 ## Stable Diffusion
 
 Result with ddim + 50 steps (ddpm not good at all)
 
-![](static/SD_ddim_50.png)
+![](static/SD_999.png)
 
+Denoising process
 
-Progress:
+![](static/SD_denoise_2.gif)
 
-![](static/SD_train_k2.gif)
+Training Progress:
+
+![](static/SD_k3.gif)
+
 
 
 ## Conclusion
 
-- WGAN is noisy, even after reducing learning weights ...
-- Stable diffusion gave the illusion, but still incomplete.
+- In both, we have a silhouette
+- WGAN result is noisy, we have pixelized shapes, even after reducing learning weights ... Grayish background
+- End of training of stable diffusion tends to saturate the colors
 
 Other directions:
 
@@ -107,6 +114,6 @@ python3 generate.py --checkpoint ../../outputs/stable_diffusion/checkpoints/chec
 ## Dataset
 
 
-- [Drive](https://drive.google.com/drive/folders/1T2hF3ieas4mNBKQN6v94mlY8lbwT4KLx?usp=sharing)
+- [Drive](https://drive.google.com/drive/folders/1T2hF3ieas4mNBKQN6v94mlY8lbwT4KLx?usp=sharing): Sugimori pokemon version
 
 (Let me know if data are no more available, this is not hosted on my gdrive account)

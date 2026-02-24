@@ -51,3 +51,4 @@ NUM_SAMPLE_IMAGES = 16
 # Sampling
 DDIM_STEPS = 50               # Steps for accelerated DDIM sampling
 DDIM_ETA = 0.0                # 0.0 = deterministic DDIM, 1.0 = DDPM
+SAMPLE_SEED = 42              # Fixed seed for reproducible sample generation (set to None for random)

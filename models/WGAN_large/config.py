@@ -10,17 +10,17 @@ GEN_FEATURE_MAPS = 96
 DISC_FEATURE_MAPS = 96
 
 # Training
-BATCH_SIZE = 64
+BATCH_SIZE =32
 NUM_EPOCHS = 2000
-LEARNING_RATE_G = 5e-5   # TTUR: slower generator
+LEARNING_RATE_G = 1e-4   # Equal to D: large discriminator already has spectral norm + GP
 LEARNING_RATE_D = 1e-4
 BETA1 = 0.0
 BETA2 = 0.9
-N_CRITIC = 5
+N_CRITIC = 3             # Reduced from 5: gives generator more frequent updates
 LAMBDA_GP = 10.0
 
 # EMA
-EMA_DECAY = 0.999
+EMA_DECAY = 0.995        # Reduced from 0.999: faster warm-up on early training
 
 # Data augmentation
 HORIZONTAL_FLIP_PROB = 0.5

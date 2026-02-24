@@ -3,12 +3,16 @@
 import argparse
 import csv
 import os
+import sys
 
 import torch
 from tqdm import tqdm
 
+# Add parent directory to path to import common module
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 import config
-from dataset import get_dataloader
+from common.dataset import get_dataloader
 from models import Generator, Discriminator
 from utils import compute_gradient_penalty, weights_init, save_image_grid
 
@@ -42,7 +46,15 @@ def main():
         torch.cuda.manual_seed(42)
 
     # Data
-    dataloader = get_dataloader()
+    dataloader = get_dataloader(
+        root_dir=config.DATA_DIR,
+        image_size=config.IMAGE_SIZE,
+        batch_size=config.BATCH_SIZE,
+        augment=True,
+        horizontal_flip_prob=config.HORIZONTAL_FLIP_PROB,
+        rotation_degrees=config.ROTATION_DEGREES,
+        color_jitter=config.COLOR_JITTER
+    )
     print(f"Dataset: {len(dataloader.dataset)} images, {len(dataloader)} batches/epoch")
 
     # Models
@@ -161,6 +173,21 @@ def main():
                 },
                 os.path.join(config.CHECKPOINT_DIR, f"checkpoint_epoch_{epoch:04d}.pt"),
             )
+
+    # Save final checkpoint if not already saved
+    final_epoch = num_epochs - 1
+    if final_epoch % config.SAVE_INTERVAL != 0:
+        torch.save(
+            {
+                "epoch": final_epoch,
+                "generator_state_dict": generator.state_dict(),
+                "discriminator_state_dict": discriminator.state_dict(),
+                "optimizer_G_state_dict": optimizer_G.state_dict(),
+                "optimizer_D_state_dict": optimizer_D.state_dict(),
+            },
+            os.path.join(config.CHECKPOINT_DIR, f"checkpoint_epoch_{final_epoch:04d}.pt"),
+        )
+        print(f"Saved final checkpoint at epoch {final_epoch}")
 
     print("Training complete.")
 
